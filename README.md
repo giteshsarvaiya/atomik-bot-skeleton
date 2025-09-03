@@ -5,32 +5,32 @@ A production-ready Discord bot skeleton built with Node.js, featuring autoloadin
 ## 🚀 Features
 
 - **ES Modules**: Modern JavaScript with import/export syntax
-- **Autoloading System**: Commands and events are automatically loaded from their respective folders
+- **Autoloading via Barrels**: Commands and events exported through barrel files for simple registration
 - **Slash Commands**: Modern Discord slash command implementation
 - **Database Persistence**: SQLite database with migrations for guild settings
-- **Graceful Degradation**: Bot continues working even if bound channels/roles are missing
+- **Graceful Degradation**: Bot continues working even if bound channels/users are missing
 - **Error Handling**: Comprehensive error handling with user-friendly messages
 - **Modern Architecture**: Clean, modular code structure following best practices
 
 ## 📋 Commands
 
-### `/bind <resource> <#channel|@role>`
-Bind a resource to a channel or role. Saves the ID (not the name) to the database.
+### `/bind <resource> ...`
+Bind a resource to a channel or a user. Saves the ID (not the name) to the database.
 
 **Supported Resources:**
-- `stats_channel` - Channel for statistics and ping commands
-- `leaderboard_channel` - Channel for leaderboard posts
-- `admin_role` - Role for administrative permissions
+- `stats_channel` → requires a channel option
+- `leaderboard_channel` → requires a channel option
+- `admin_role` (Admin - User) → requires a user option (stored in `admin_role_id`)
 
-**Example:**
+**Usage Examples:**
 ```
-/bind stats_channel #stats
-/bind leaderboard_channel #leaderboard
-/bind admin_role @Moderator
+/bind resource:Stats Channel channel:#stats
+/bind resource:Leaderboard Channel channel:#leaderboard
+/bind resource:Admin (User) user:@Moderator
 ```
 
 ### `/status`
-Shows current bindings and their status. Warns about missing channels/roles.
+Shows current bindings and their status. Warns about missing channels/users.
 
 ### `/leaderboard`
 Posts mocked leaderboard data to the bound leaderboard channel. Warns if no channel is bound.
@@ -70,7 +70,6 @@ Sends "pong" to the bound stats channel. Warns if no channel is bound.
 
 4. **Database Setup**
    ```bash
-   # Run database migrations
    npm run migrate
    ```
 
@@ -97,6 +96,8 @@ CREATE TABLE guild_settings (
 );
 ```
 
+Note: For the admin binding we currently store a user ID in `admin_role_id`.
+
 ## 📁 Project Structure
 
 ```
@@ -104,24 +105,31 @@ atomik-bot-skeleton/
 ├── src/
 │   └── index.js              # Main entry point
 ├── discord/
-│   ├── commands/             # Slash command files
+│   ├── commands/
+│   │   ├── index.js          # Barrel file exporting all commands
 │   │   ├── bind.js
 │   │   ├── status.js
 │   │   ├── leaderboard.js
 │   │   └── ping-stats.js
-│   └── events/               # Discord event handlers
+│   └── events/
+│       ├── index.js          # Barrel file exporting all events
 │       ├── ready.js
-│       └── interactionCreate.js
+│       ├── interactionCreate.js
+│       ├── channelDelete.js
+│       ├── channelUpdate.js
+│       ├── guildCreate.js
+│       ├── guildDelete.js
+│       └── messageCreate.js
 ├── db/
 │   ├── database.js           # Database connection & setup
-│   └── migrations/           # Database migration files
+│   └── migrations/
 │       └── 001_create_guild_settings.sql
 ├── config/
 │   ├── env.js                # Environment validation
 │   └── constants.js          # Bot constants
 ├── .eslintrc.js              # ESLint configuration
 ├── .prettierrc               # Prettier configuration
-├── .github/workflows/        # GitHub Actions CI
+├── .github/workflows/ci.yml  # CI workflow
 └── package.json
 ```
 
@@ -149,7 +157,12 @@ The project uses:
 2. Export an object with `data` (SlashCommandBuilder) and `execute` (function)
 3. The command will be automatically loaded on startup
 
-### Adding New Events
+## 🔔 Event Logging
+The bot logs these events to the console:
+- `channelDelete`, `channelUpdate`
+- `guildCreate`, `guildDelete`
+- `messageCreate`
+- All `interactionCreate` events (with command name when applicable)
 
 1. Create a new file in `discord/events/`
 2. Export an object with `name` (event name) and `execute` (function)
