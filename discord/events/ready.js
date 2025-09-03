@@ -40,10 +40,31 @@ async function registerCommands(client) {
   });
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+  const appId = process.env.DISCORD_CLIENT_ID;
+  const devGuildId = process.env.DEV_GUILD_ID;
 
-  // Register commands globally
-  await rest.put(
-    Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
-    { body: commands }
-  );
+  if (devGuildId) {
+    // Fast registration to a single guild for instant updates
+    console.log(`🔧 Registering commands to dev guild ${devGuildId}...`);
+    await rest.put(
+      Routes.applicationGuildCommands(appId, devGuildId),
+      { body: commands }
+    );
+
+    // Also clear global commands to avoid duplicates while developing
+    try {
+      console.log('🧹 Clearing global commands while DEV_GUILD_ID is set...');
+      await rest.put(Routes.applicationCommands(appId), { body: [] });
+      console.log('✅ Cleared global commands');
+    } catch (clearErr) {
+      console.warn('⚠️ Could not clear global commands:', clearErr?.message || clearErr);
+    }
+  } else {
+    // Global registration (can take up to 1 hour to propagate)
+    console.log('🌐 Registering commands globally...');
+    await rest.put(
+      Routes.applicationCommands(appId),
+      { body: commands }
+    );
+  }
 }

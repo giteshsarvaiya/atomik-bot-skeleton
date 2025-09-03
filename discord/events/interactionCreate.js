@@ -1,10 +1,19 @@
-import { Events, InteractionType } from 'discord.js';
+import { Events } from 'discord.js';
 
 export default {
   name: Events.InteractionCreate,
   async execute(interaction) {
-    // Only handle slash commands
-    if (interaction.type !== InteractionType.ApplicationCommand) {
+    // Log every interaction
+    try {
+      const userTag = interaction.user?.tag || 'Unknown User';
+      const guildName = interaction.guild?.name || 'DM/Unknown Guild';
+      console.log(`⚡ Interaction received from ${userTag} in ${guildName} (type: ${interaction.type}, command: ${interaction.commandName || 'n/a'})`);
+    } catch (_) {
+      console.log('⚡ Interaction received');
+    }
+
+    // Only handle slash (chat input) commands
+    if (!interaction.isChatInputCommand()) {
       return;
     }
 
@@ -19,16 +28,20 @@ export default {
       await command.execute(interaction);
     } catch (error) {
       console.error(`❌ Error executing command ${interaction.commandName}:`, error);
-      
-      const errorMessage = {
-        content: '❌ There was an error while executing this command!',
-        ephemeral: true
-      };
 
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(errorMessage);
+      // Ensure we respond safely depending on current state
+      if (interaction.deferred || interaction.replied) {
+        try {
+          await interaction.editReply({ content: '❌ There was an error while executing this command!' });
+        } catch (_) {
+          try {
+            await interaction.followUp({ content: '❌ There was an error while executing this command!' });
+          } catch (_) {}
+        }
       } else {
-        await interaction.reply(errorMessage);
+        try {
+          await interaction.reply({ content: '❌ There was an error while executing this command!', ephemeral: true });
+        } catch (_) {}
       }
     }
   }
