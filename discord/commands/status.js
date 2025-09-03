@@ -39,7 +39,7 @@ export default {
         
         embed.addFields({
           name: '📈 Stats Channel',
-          value: statsChannel ? `✅ ${statsChannel}` : `❌ Missing (ID: ${settings.stats_channel_id})`,
+          value: statsChannel ? `✅ ${statsChannel}` : (settings.stats_channel_id ? `❌ Missing (ID: ${settings.stats_channel_id})` : '❌ Not set'),
           inline: true
         });
 
@@ -49,17 +49,23 @@ export default {
         
         embed.addFields({
           name: '🏆 Leaderboard Channel',
-          value: leaderboardChannel ? `✅ ${leaderboardChannel}` : `❌ Missing (ID: ${settings.leaderboard_channel_id})`,
+          value: leaderboardChannel ? `✅ ${leaderboardChannel}` : (settings.leaderboard_channel_id ? `❌ Missing (ID: ${settings.leaderboard_channel_id})` : '❌ Not set'),
           inline: true
         });
 
-        // Check admin role
-        const adminRole = settings.admin_role_id ? 
-          interaction.guild.roles.cache.get(settings.admin_role_id) : null;
-        
+        // Admin binding now stores a USER id in admin_role_id
+        let adminDisplay = '❌ Not set';
+        if (settings.admin_role_id) {
+          try {
+            const adminUser = await interaction.client.users.fetch(settings.admin_role_id);
+            adminDisplay = adminUser ? `✅ <@${adminUser.id}> (${adminUser.tag})` : `❌ Missing (ID: ${settings.admin_role_id})`;
+          } catch {
+            adminDisplay = `❌ Missing (ID: ${settings.admin_role_id})`;
+          }
+        }
         embed.addFields({
-          name: '👑 Admin Role',
-          value: adminRole ? `✅ ${adminRole}` : `❌ Missing (ID: ${settings.admin_role_id})`,
+          name: '👑 Admin User',
+          value: adminDisplay,
           inline: true
         });
 
@@ -71,8 +77,8 @@ export default {
         if (!leaderboardChannel && settings.leaderboard_channel_id) {
           warnings.push('⚠️ Leaderboard channel is missing - leaderboard feature disabled');
         }
-        if (!adminRole && settings.admin_role_id) {
-          warnings.push('⚠️ Admin role is missing - admin features disabled');
+        if (settings.admin_role_id && adminDisplay.startsWith('❌')) {
+          warnings.push('⚠️ Admin user not found - admin features disabled');
         }
 
         if (warnings.length > 0) {
@@ -91,7 +97,7 @@ export default {
         }
       }
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
 
     } catch (error) {
       console.error('Error in status command:', error);
